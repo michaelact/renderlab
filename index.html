@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+    style-src 'self' 'unsafe-inline';
+    frame-src blob:;
+    connect-src 'none';
+  ">
+  <title>RenderLab — HTML Web Editor</title>
+  <link rel="stylesheet" href="/styles/base.css">
+  <link rel="stylesheet" href="/styles/layout.css">
+  <link rel="stylesheet" href="/styles/components.css">
+  <style>
+    html[data-theme="dark"] .cm-editor {
+      background: #1e1e1e;
+      color: #e0e0e0;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header class="header">
+      <h1>RenderLab</h1>
+      <div class="header-spacer"></div>
+      <button class="btn-icon" data-action="toggle-theme" title="Toggle theme">
+        🌓
+      </button>
+    </header>
+
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <button data-action="new-project">+ Project</button>
+        <button data-action="open-folder">📁 Open</button>
+      </div>
+      <div class="sidebar-content">
+        <div class="project-list"></div>
+      </div>
+    </aside>
+
+    <section class="editor-section">
+      <div class="tabs"></div>
+      <div class="editor-pane"></div>
+    </section>
+
+    <section class="preview-section">
+      <div class="preview-header">Live Preview</div>
+      <div class="preview-pane"></div>
+    </section>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
