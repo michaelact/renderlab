@@ -1,0 +1,24 @@
+{
+  "name": "renderlab",
+  "version": "1.0.0",
+  "description": "Multi-file HTML/CSS/JS editor with live preview",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  },
+  "dependencies": {
+    "@codemirror/lang-css": "^6.2.0",
+    "@codemirror/lang-html": "^6.4.0",
+    "@codemirror/lang-javascript": "^6.2.0",
+    "@codemirror/lang-json": "^6.0.0",
+    "@codemirror/lang-xml": "^6.1.0",
+    "@codemirror/state": "^6.3.0",
+    "@codemirror/view": "^6.23.0",
+    "codemirror": "^6.0.0"
+  }
+}
