@@ -3,6 +3,7 @@ export class EditorComponent {
     this.container = container;
     this.eventBus = eventBus;
     this.cm = null;
+    this.cmUnavailable = false;
     this.currentFile = null;
     this.openTabs = new Map();
     this.unsavedChanges = new Set();
@@ -17,13 +18,13 @@ export class EditorComponent {
     if (this.cm) return true;
 
     try {
-      const { EditorState } = await import('https://cdn.jsdelivr.net/npm/@codemirror/state@6.3.0/+esm');
-      const { EditorView, basicSetup } = await import('https://cdn.jsdelivr.net/npm/codemirror@6.0.0/+esm');
-      const { javascript } = await import('https://cdn.jsdelivr.net/npm/@codemirror/lang-javascript@6.2.0/+esm');
-      const { html } = await import('https://cdn.jsdelivr.net/npm/@codemirror/lang-html@6.4.0/+esm');
-      const { css } = await import('https://cdn.jsdelivr.net/npm/@codemirror/lang-css@6.2.0/+esm');
-      const { json } = await import('https://cdn.jsdelivr.net/npm/@codemirror/lang-json@6.0.0/+esm');
-      const { xml } = await import('https://cdn.jsdelivr.net/npm/@codemirror/lang-xml@6.1.0/+esm');
+      const { EditorState } = await import('@codemirror/state');
+      const { EditorView, basicSetup } = await import('codemirror');
+      const { javascript } = await import('@codemirror/lang-javascript');
+      const { html } = await import('@codemirror/lang-html');
+      const { css } = await import('@codemirror/lang-css');
+      const { json } = await import('@codemirror/lang-json');
+      const { xml } = await import('@codemirror/lang-xml');
 
       this.EditorState = EditorState;
       this.EditorView = EditorView;
@@ -37,13 +38,14 @@ export class EditorComponent {
   }
 
   async openFile(path, content) {
-    if (!this.cm) {
+    if (!this.cm && !this.cmUnavailable) {
       const loaded = await this.loadCodeMirror();
-      if (!loaded) {
-        this.useFallbackTextarea(path, content);
-        return;
+      if (loaded) {
+        this.createEditor();
+      } else {
+        this.cmUnavailable = true;
+        this.useFallbackTextarea();
       }
-      this.createEditor();
     }
 
     this.currentFile = path;
@@ -67,22 +69,27 @@ export class EditorComponent {
 
     const state = this.EditorState.create({
       doc: '',
-      extensions: [this.basicSetup]
+      extensions: [this.basicSetup, this.changeListener()]
     });
 
     this.cm = new this.EditorView({
       state,
       parent: editorContainer
     });
-
-    this.cm.dom.addEventListener('change', () => this.onFileChange());
   }
 
-  useFallbackTextarea(path, content) {
+  changeListener() {
+    return this.EditorView.updateListener.of((update) => {
+      if (update.docChanged) this.onFileChange();
+    });
+  }
+
+  useFallbackTextarea() {
+    if (this.fallbackTextarea) return;
+
     const parent = this.container.querySelector('.editor-pane');
     const textarea = document.createElement('textarea');
     textarea.className = 'fallback-editor';
-    textarea.value = content || '';
     textarea.style.width = '100%';
     textarea.style.height = '100%';
     textarea.style.fontFamily = 'monospace';
@@ -91,10 +98,10 @@ export class EditorComponent {
     parent.appendChild(textarea);
 
     textarea.addEventListener('input', (e) => {
-      this.currentFile = path;
-      if (this.openTabs.has(path)) {
-        this.openTabs.get(path).content = e.target.value;
-        this.openTabs.get(path).dirty = true;
+      const tab = this.openTabs.get(this.currentFile);
+      if (tab) {
+        tab.content = e.target.value;
+        tab.dirty = true;
       }
       this.onFileChange();
     });
@@ -112,7 +119,7 @@ export class EditorComponent {
       const lang = this.getLanguage(path);
       const state = this.EditorState.create({
         doc: tab.content,
-        extensions: [this.basicSetup, lang || []]
+        extensions: [this.basicSetup, lang || [], this.changeListener()]
       });
       this.cm.setState(state);
     } else if (this.fallbackTextarea) {

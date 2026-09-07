@@ -26,20 +26,17 @@ const deps = {
   uiController
 };
 
+// Wire container references
+editorComponent.container = container;
+rendererComponent.container = container;
+uiController.container = container;
+
 // Initialize all modules in dependency order
 projectManager.init(deps);
 fileMapBuilder.init(deps);
 assetResolver.init(deps);
 editorComponent.init(deps);
 rendererComponent.init(deps);
-uiController.init(deps);
-
-// Wire container references
-editorComponent.container = container;
-rendererComponent.container = container;
-uiController.container = container;
-
-// Start the app
 uiController.init(deps);
 
 // Cleanup on page unload

@@ -4,37 +4,71 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="
-    default-src 'self';
-    script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
-    style-src 'self' 'unsafe-inline';
-    frame-src blob:;
-    connect-src 'none';
+    default-src 'self' https: http: data: blob:;
+    script-src 'self' 'unsafe-inline' https: http:;
+    style-src 'self' 'unsafe-inline' https: http:;
+    img-src 'self' data: blob: https: http:;
+    font-src 'self' data: https: http:;
+    media-src 'self' blob: https: http:;
+    connect-src *;
+    frame-src blob: https:;
   ">
+  <!-- ponytail: preview sandbox has open network access (script/connect/frame) so
+       previewed projects can use real CDN scripts and APIs. Everything here still
+       runs inside a sandboxed iframe with no allow-same-origin, but it can reach
+       any external host now. Only relax further, never make top-level app changes
+       here without knowing this trade-off applies to every project opened. -->
+
   <title>RenderLab — HTML Web Editor</title>
   <link rel="stylesheet" href="/styles/base.css">
   <link rel="stylesheet" href="/styles/layout.css">
   <link rel="stylesheet" href="/styles/components.css">
   <style>
-    html[data-theme="dark"] .cm-editor {
-      background: #1e1e1e;
-      color: #e0e0e0;
+    .cm-editor {
+      height: 100%;
+      background: var(--bg) !important;
+      color: var(--ink) !important;
+    }
+    .cm-gutters {
+      background: var(--panel) !important;
+      color: var(--ink-dim) !important;
+      border-right: 1px solid var(--line) !important;
+    }
+    .cm-activeLine, .cm-activeLineGutter {
+      background: color-mix(in srgb, var(--line) 60%, transparent) !important;
+    }
+    .cm-cursor {
+      border-left-color: var(--safelight) !important;
+    }
+    .cm-selectionBackground {
+      background: color-mix(in srgb, var(--safelight) 25%, transparent) !important;
     }
   </style>
 </head>
 <body>
   <div id="app">
     <header class="header">
-      <h1>RenderLab</h1>
+      <h1><span class="status-led" data-el="status-led"></span>RenderLab</h1>
+      <span class="header-breadcrumb" data-el="breadcrumb"></span>
       <div class="header-spacer"></div>
       <button class="btn-icon" data-action="toggle-theme" title="Toggle theme">
-        🌓
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+          <circle cx="12" cy="10" r="5.5"/>
+          <path d="M9.5 18.5h5M10.25 21h3.5"/>
+        </svg>
       </button>
     </header>
 
     <aside class="sidebar">
       <div class="sidebar-header">
-        <button data-action="new-project">+ Project</button>
-        <button data-action="open-folder">📁 Open</button>
+        <button data-action="new-project">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 6v12M6 12h12"/></svg>
+          New
+        </button>
+        <button data-action="open-folder">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5h5.5L10 9.5h11v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-11Z"/></svg>
+          Open
+        </button>
       </div>
       <div class="sidebar-content">
         <div class="project-list"></div>

@@ -6,6 +6,8 @@ export class FileMapBuilder {
     this.fileMap = {};
   }
 
+  init() {}
+
   async buildFromFilesystem(fileHandles) {
     const map = {};
 

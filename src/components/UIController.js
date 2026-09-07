@@ -36,7 +36,7 @@ export class UIController {
     });
 
     this.on('renderer:rendered', (data) => {
-      console.log('Rendered:', data.url);
+      this.pulseStatusLed();
     });
 
     // DOM buttons
@@ -65,6 +65,19 @@ export class UIController {
     return this.deps.eventBus.on(eventName, handler);
   }
 
+  pulseStatusLed() {
+    const led = this.container.querySelector('[data-el="status-led"]');
+    if (!led) return;
+    led.classList.remove('is-active');
+    void led.offsetWidth;
+    led.classList.add('is-active');
+  }
+
+  setBreadcrumb(label) {
+    const breadcrumb = this.container.querySelector('[data-el="breadcrumb"]');
+    if (breadcrumb) breadcrumb.textContent = label || '';
+  }
+
   createNewProject() {
     const name = prompt('Project name:');
     if (!name) return;
@@ -82,6 +95,7 @@ export class UIController {
     if (!handle) return;
 
     this.currentFolderHandle = handle;
+    this.setBreadcrumb(handle.name);
 
     const result = await this.deps.fileSystemService.scanDirectory(handle);
     const fileMap = await this.deps.fileMapBuilder.buildFromFilesystem(result.files);
@@ -89,9 +103,11 @@ export class UIController {
     this.deps.rendererComponent.create();
     this.renderFileTree(result.files, result.folders);
 
+    const entryPath = this.deps.fileMapBuilder.findEntryPoint();
     const textFiles = this.deps.fileMapBuilder.getTextFiles();
-    if (textFiles.length > 0) {
-      await this.deps.editorComponent.openFile(textFiles[0].path, textFiles[0].content);
+    const initialFile = textFiles.find(f => f.path === entryPath) || textFiles[0];
+    if (initialFile) {
+      await this.deps.editorComponent.openFile(initialFile.path, initialFile.content);
     }
 
     this.deps.eventBus.emit('project:loaded', { files: fileMap });
@@ -101,19 +117,22 @@ export class UIController {
     const project = this.deps.projectManager.getProject(projectId);
     if (!project) return;
 
+    this.setBreadcrumb(project.name);
     this.deps.blobRegistry.revokeAll();
     this.deps.fileMapBuilder.buildFromObject(project.files);
     this.deps.rendererComponent.create();
 
     this.renderFileTree(project.files);
 
+    const entryPath = this.deps.fileMapBuilder.findEntryPoint();
     const textFiles = Object.entries(project.files).filter(([path]) => {
       const ext = path.substring(path.lastIndexOf('.'));
       return ['.html', '.htm', '.svg', '.css', '.js', '.mjs', '.json', '.xml', '.csv', '.txt'].includes(ext);
     });
+    const initialFile = textFiles.find(([path]) => path === entryPath) || textFiles[0];
 
-    if (textFiles.length > 0) {
-      await this.deps.editorComponent.openFile(textFiles[0][0], textFiles[0][1]);
+    if (initialFile) {
+      await this.deps.editorComponent.openFile(initialFile[0], initialFile[1]);
     }
 
     this.deps.eventBus.emit('project:loaded', { id: projectId });
@@ -156,33 +175,31 @@ export class UIController {
     const sidebar = this.container.querySelector('.sidebar-content');
     if (!sidebar) return;
 
-    const treeEl = document.createElement('div');
-    treeEl.className = 'file-tree';
+    let treeEl = sidebar.querySelector('.file-tree');
+    if (!treeEl) {
+      treeEl = document.createElement('div');
+      treeEl.className = 'file-tree';
+      sidebar.appendChild(treeEl);
+    }
+    treeEl.textContent = '';
 
     const renderTree = (items, parentPath = '') => {
       if (!items || Object.keys(items).length === 0) {
         const emptyDiv = document.createElement('div');
-        emptyDiv.style.padding = '1rem';
-        emptyDiv.style.color = '#666';
+        emptyDiv.className = 'file-tree-empty';
         emptyDiv.textContent = 'No files';
         treeEl.appendChild(emptyDiv);
         return;
       }
 
       const list = document.createElement('ul');
-      list.style.listStyle = 'none';
-      list.style.padding = '0';
-      list.style.margin = '0';
 
       Object.keys(items).forEach(path => {
         const li = document.createElement('li');
-        li.style.padding = '0.25rem 0.5rem';
 
         const name = path.includes('/') ? path.substring(path.lastIndexOf('/') + 1) : path;
         const span = document.createElement('span');
         span.textContent = name;
-        span.style.cursor = 'pointer';
-        span.style.userSelect = 'none';
 
         span.addEventListener('click', () => {
           this.deps.editorComponent.openFile(path, items[path] || '');
@@ -196,8 +213,6 @@ export class UIController {
     };
 
     renderTree(files);
-    sidebar.textContent = '';
-    sidebar.appendChild(treeEl);
   }
 
   renderProjectList() {
@@ -210,16 +225,9 @@ export class UIController {
     projects.forEach(proj => {
       const li = document.createElement('div');
       li.className = 'project-item';
-      li.style.padding = '0.5rem';
-      li.style.borderRadius = '4px';
-      li.style.cursor = 'pointer';
-      li.style.marginBottom = '0.5rem';
-      li.style.display = 'flex';
-      li.style.alignItems = 'center';
 
       if (proj.id === this.deps.projectManager.currentProjectId) {
-        li.style.backgroundColor = '#007acc';
-        li.style.color = '#fff';
+        li.classList.add('active');
       }
 
       const nameSpan = document.createElement('span');
@@ -234,11 +242,7 @@ export class UIController {
 
       const deleteBtn = document.createElement('button');
       deleteBtn.textContent = '×';
-      deleteBtn.style.marginLeft = 'auto';
-      deleteBtn.style.background = 'none';
-      deleteBtn.style.border = 'none';
-      deleteBtn.style.color = 'inherit';
-      deleteBtn.style.cursor = 'pointer';
+      deleteBtn.className = 'project-item-delete';
       deleteBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         if (confirm(`Delete "${proj.name}"?`)) {
@@ -270,10 +274,6 @@ export class UIController {
     const warning = document.createElement('div');
     warning.className = 'browser-warning';
     warning.textContent = 'File System Access API not supported. Using localStorage only.';
-    warning.style.backgroundColor = '#fff3cd';
-    warning.style.color = '#856404';
-    warning.style.padding = '1rem';
-    warning.style.borderBottom = '1px solid #ffc107';
     this.container.insertBefore(warning, this.container.firstChild);
   }
 }

@@ -37,10 +37,8 @@ export class AssetResolver {
     resolved = resolved.replace(
       /<link\s+rel="stylesheet"\s+href="([^"]+)"\s*\/?>/gi,
       (match, href) => {
-        if (this.securityService.isRemoteURL(href)) {
-          console.warn('Blocked remote stylesheet:', href);
-          return '';
-        }
+        if (this.securityService.isRemoteURL(href)) return match;
+
         const cssPath = this.resolvePath(basePath, href);
         const cssContent = this.fileMap[cssPath]?.content;
         if (!cssContent) {
@@ -52,21 +50,25 @@ export class AssetResolver {
       }
     );
 
-    // Inline scripts
+    // Inline scripts (any attribute order, e.g. type="module")
     resolved = resolved.replace(
-      /<script\s+src="([^"]+)"\s*><\/script>/gi,
-      (match, src) => {
-        if (this.securityService.isRemoteURL(src)) {
-          console.warn('Blocked remote script:', src);
-          return '';
-        }
+      /<script\s+([^>]*)><\/script>/gi,
+      (match, attrs) => {
+        const srcMatch = attrs.match(/\bsrc="([^"]+)"/i);
+        if (!srcMatch) return match;
+
+        const src = srcMatch[1];
+        const isModule = /\btype="module"/i.test(attrs);
+
+        if (this.securityService.isRemoteURL(src)) return match;
+
         const jsPath = this.resolvePath(basePath, src);
         const jsContent = this.fileMap[jsPath]?.content;
         if (!jsContent) {
           console.warn('Script not found:', jsPath);
           return '';
         }
-        return `<script>${jsContent}</script>`;
+        return isModule ? `<script type="module">${jsContent}</script>` : `<script>${jsContent}</script>`;
       }
     );
 
@@ -83,10 +85,8 @@ export class AssetResolver {
     resolved = resolved.replace(
       /url\(['"]?([^'")\s]+)['"]?\)/gi,
       (match, url) => {
-        if (this.securityService.isRemoteURL(url)) {
-          console.warn('Blocked remote asset in CSS:', url);
-          return match;
-        }
+        if (this.securityService.isRemoteURL(url)) return match;
+
         const assetPath = this.resolvePath(basePath, url);
         const blobUrl = this.getOrCreateBlobURL(assetPath);
         return blobUrl ? `url(${blobUrl})` : match;
@@ -97,10 +97,8 @@ export class AssetResolver {
     resolved = resolved.replace(
       /@import\s+['"]([^'"]+)['"]/gi,
       (match, importPath) => {
-        if (this.securityService.isRemoteURL(importPath)) {
-          console.warn('Blocked remote import:', importPath);
-          return '';
-        }
+        if (this.securityService.isRemoteURL(importPath)) return match;
+
         const cssPath = this.resolvePath(basePath, importPath);
         const importContent = this.fileMap[cssPath]?.content;
         if (!importContent) return '';
@@ -119,10 +117,8 @@ export class AssetResolver {
       /src="([^"]+)"/gi,
       (match, src) => {
         if (src.startsWith('data:') || src.startsWith('blob:')) return match;
-        if (this.securityService.isRemoteURL(src)) {
-          console.warn('Blocked remote image:', src);
-          return 'src=""';
-        }
+        if (this.securityService.isRemoteURL(src)) return match;
+
         const assetPath = this.resolvePath(basePath, src);
         const blobUrl = this.getOrCreateBlobURL(assetPath);
         return blobUrl ? `src="${blobUrl}"` : match;
@@ -134,10 +130,8 @@ export class AssetResolver {
       /(poster|src)="([^"]+)"/gi,
       (match, attr, url) => {
         if (url.startsWith('data:') || url.startsWith('blob:')) return match;
-        if (this.securityService.isRemoteURL(url)) {
-          console.warn(`Blocked remote ${attr}:`, url);
-          return `${attr}=""`;
-        }
+        if (this.securityService.isRemoteURL(url)) return match;
+
         const assetPath = this.resolvePath(basePath, url);
         const blobUrl = this.getOrCreateBlobURL(assetPath);
         return blobUrl ? `${attr}="${blobUrl}"` : match;

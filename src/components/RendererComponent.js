@@ -18,11 +18,6 @@ export class RendererComponent {
 
     this.iframe = document.createElement('iframe');
     this.iframe.sandbox.add('allow-scripts');
-    this.iframe.style.width = '100%';
-    this.iframe.style.height = '100%';
-    this.iframe.style.border = 'none';
-    this.iframe.style.backgroundColor = '#fff';
-
     parent.appendChild(this.iframe);
   }
 
