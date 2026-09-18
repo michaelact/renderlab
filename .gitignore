@@ -31,6 +31,10 @@ go.work.sum
 dist/
 node_modules/
 
+# Playwright test artifacts
+playwright-report/
+test-results/
+
 # Editor/IDE
 # .idea/
 # .vscode/
